@@ -8,12 +8,12 @@ Application web permettant de comparer 2 villes française selon des critères
 L'utilisateur doit pouvoir choisir les villes  
 Ville qui a plus de 20000 habitants
 
-Application à déployer => doit posséder une adresse  
+Application à déployer doit posséder une adresse  
 Exemple d’outil qu’on peut utiliser pour la gestion des données : dataiku 
 
 
-Localisation, Nb d’habitant, nb d’emploie 
-Info sur logement pour louer, nb de logement pour acheter 
+Localisation, Nombre d’habitants, nombre d’emplois
+Informations sur logement pour louer, nombre de logements pour acheter 
  
 Rendu :
 Rapport  
