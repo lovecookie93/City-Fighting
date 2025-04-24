@@ -1,4 +1,4 @@
-# Application Streamlit avec météo interactive (deux cartes Folium stylées avec popups cliquables)
+# Application Streamlit 
 import streamlit as st
 import pandas as pd
 import requests
@@ -47,6 +47,12 @@ st.set_page_config(page_title="City Fighting", layout="wide")
 # Chargement des données
 villes_df = load_villes()
 
+# Garder uniquement les villes de France métropolitaine (départements de 01 à 95)
+villes_df = villes_df[villes_df["departement_code"].astype(str).isin(
+    [f"{i:02}" for i in range(1, 96)]
+)]
+
+
 # Chargement des données enrichies depuis CSV local
 @st.cache_data
 def load_ville_info():
@@ -58,7 +64,20 @@ def load_loyers_departement():
     df_loyers = pd.read_csv("loyers_par_departement.csv")
     return df_loyers
 
+@st.cache_data
+def load_etabs_sup():
+    return pd.read_csv("villes_etabs_sup.csv")
+
+@st.cache_data
+def load_culture_transport():
+    return pd.read_csv("villes_culture_transport_.csv")
+
+
+
+etabs_sup_df = load_etabs_sup()
 ville_info_df = load_ville_info()
+culture_transport_df = load_culture_transport()
+
 
 # Fusion des deux DataFrames
 loyers_df = load_loyers_departement()
@@ -67,6 +86,9 @@ villes_df["departement_code"] = villes_df["departement_code"].astype(str)
 
 villes_df = pd.merge(villes_df, ville_info_df, on="label", how="left")
 villes_df = pd.merge(villes_df, loyers_df, on="departement_code", how="left", suffixes=("", "_dept"))
+villes_df = pd.merge(villes_df, etabs_sup_df, on="label", how="left")
+villes_df = pd.merge(villes_df, culture_transport_df, on="label", how="left")
+
 
 # Remplacer uniquement pour les départements franciliens si valeur dispo
 idf_codes = ["75", "77", "78", "91", "92", "93", "94", "95"]
@@ -84,7 +106,7 @@ ville2 = st.sidebar.selectbox("Choisissez la deuxième ville :", villes_df["labe
 
 # Titre
 st.title("🏙️ City Fighting - Comparateur de Villes")
-st.header("Trouver la meilleure ville pour vos études")
+st.header("Explorez les villes pour vos études ou stages")
 
 # Onglets selon votre plan
 onglet1, onglet2, onglet3, onglet4, onglet5 = st.tabs(["Données générales", "Données complémentaires", "Classement", "Trouver ma ville idéale", "À propos"])
@@ -152,11 +174,12 @@ with onglet2:
                 st.markdown(f"""
                 <div style='padding: 20px; background-color: #fefefe; border: 1px solid #ddd; border-radius: 10px; box-shadow: 2px 2px 8px rgba(0,0,0,0.03);'>
                     <h4 style='color:#333;'>{ville}</h4>
-                    <p><strong>💰 Loyer moyen :</strong> {data['loyer_m2']} €/m²<br><small style='color:#888;'>📍 Source : {"départementale" if not pd.isna(data.get('loyer_m2_dept')) and data['departement_code'] in ["75", "77", "78", "91", "92", "93", "94", "95"] else "régionale"}</small></p>
+                    <p><strong>💰 Prix moyen au m² :</strong> {data['loyer_m2']} €/m²<br><small style='color:#888;'>📍 Source : {"départementale" if not pd.isna(data.get('loyer_m2_dept')) and data['departement_code'] in ["75", "77", "78", "91", "92", "93", "94", "95"] else "régionale"}</small></p>
                     <p><strong>🏠 Logements étudiants :</strong> {int(data['logements_etudiants']):,}</p>
                     <p><strong>🏙️ Logements sociaux :</strong> {int(data['logements_sociaux']):,}</p>
                 </div>
                 """, unsafe_allow_html=True)
+
 
     
 
@@ -206,6 +229,73 @@ with onglet2:
                 </div>
                 """, unsafe_allow_html=True)
 
+    st.markdown("## 🎓 Données sur l’enseignement supérieur")
+
+    col1, col2 = st.columns(2)
+    for col, ville in zip([col1, col2], [ville1, ville2]):
+        # Récupère toutes les villes commençant par la sélection (ex: Paris → Paris 1er, Paris 5e...)
+        matched_rows = etabs_sup_df[etabs_sup_df["label"].str.contains(f"^{ville}( |$)", case=False, na=False)]
+
+        with col:
+            if matched_rows.empty or matched_rows["nb_etabs_sup"].isna().all():
+                st.warning(f"⚠️ Aucun établissement d'enseignement supérieur recensé à {ville}.")
+            else:
+                if len(matched_rows) > 1:
+                    selected_label = st.selectbox(
+                        f"Choisissez un arrondissement de {ville} :",
+                        options=matched_rows["label"].unique(),
+                        key=f"arr_{ville}"
+                    )
+                    selected_row = matched_rows[matched_rows["label"] == selected_label].iloc[0]
+                else:
+                    selected_row = matched_rows.iloc[0]
+
+                st.markdown(f"""
+                    <div style='padding: 20px; background-color: #fefefe; border: 1px solid #ddd; border-radius: 10px; box-shadow: 2px 2px 8px rgba(0,0,0,0.03);'>
+                        <h4 style='color:#333;'>{selected_row["label"]}</h4>
+                        <p><strong>🎓 Nombre d'établissements :</strong> {int(selected_row['nb_etabs_sup'])}</p>
+                        <p><strong>🏫 Types :</strong> {selected_row['types_etabs']}</p>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                if pd.notna(selected_row.get("etabs_noms")):
+                    with st.expander("📚 Voir les établissements présents"):
+                        st.markdown("".join([f"- {e.strip()}\n" for e in selected_row["etabs_noms"].split(",")]))
+
+    st.markdown("## 🚊 Transport étudiant")
+    col1, col2 = st.columns(2)
+    for col, ville in zip([col1, col2], [ville1, ville2]):
+        data = villes_df[villes_df["label"] == ville].iloc[0]
+        with col:
+            if pd.notna(data.get("tarif_transport_etudiant")):
+                st.markdown(f"""
+                    <div style='padding: 20px; background-color: #fff8f0; border: 1px solid #ddd; border-radius: 10px;'>
+                        <h5>🎫 Tarif étudiant : <strong>{data["tarif_transport_etudiant"]} € / mois</strong></h5>
+                        <p style='color:#888;'>📍 Source : {data["source"]}</p>
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.warning(f"⚠️ Tarif étudiant non disponible pour {ville}.")
+
+    st.markdown("## 🎭 Données sur la culture")
+
+    col1, col2 = st.columns(2)
+    for col, ville in zip([col1, col2], [ville1, ville2]):
+        data = villes_df[villes_df["label"] == ville].iloc[0]
+        with col:
+            if pd.isna(data.get("nb_events_culture")) or data["nb_events_culture"] == 0:
+                st.warning(f"Aucun événement culturel recensé à {ville}.")
+            else:
+                st.success(f"🎉 {int(data['nb_events_culture'])} événements culturels recensés à {ville}.")
+                if pd.notna(data.get("titres_events_culture")) and data["titres_events_culture"] != "Aucun événement recensé":
+                    with st.expander("📚 Voir les événements culturels"):
+                        for titre in data["titres_events_culture"].split(","):
+                            st.markdown(f"- {titre.strip()}")
+
+
+
+
+
 # --- Onglet 3 : Classement des villes étudiantes ---
 with onglet3:
     st.markdown("## 🏆 Classement des villes étudiantes")
@@ -221,9 +311,17 @@ with onglet3:
     }
 
     classement_df = pd.DataFrame.from_dict(classement_data, orient='index')
-    classement_df = classement_df.reset_index().rename(columns={"index": "Ville", "rang": "Classement", "score": "Score", "loyer_m2": "Loyer moyen (€/m²)"})
+    classement_df = classement_df.reset_index().rename(columns={"index": "Ville", "rang": "Classement", "score": "Score", "loyer_m2": "Prix moyen au m²"})
     classement_df = classement_df.sort_values("Classement")
     st.dataframe(classement_df, use_container_width=True)
+
+    
+    st.markdown("""
+    <small style="color:#888;">
+    📊 Le score est calculé selon plusieurs critères : loyer abordable, secteurs d’emploi dominants, nombre de logements étudiants, et présence d’au moins deux établissements d’enseignement supérieur.  
+    Chaque critère rapporte un point, pour un total sur 5, transformé ici en score sur 100.
+    </small>
+    """, unsafe_allow_html=True)
 
 # --- Onglet 4 : Trouver ma ville idéale ---
 with onglet4:
@@ -252,6 +350,14 @@ with onglet4:
     st.markdown("<small style='color:#888;'>📍 Les loyers affichés proviennent de sources départementales (IDF) ou régionales ailleurs.</small>", unsafe_allow_html=True)
     for _, row in top.iterrows():
         st.markdown(f"- 🌆 **{row['label']}** — Score : {int(row['score'])}/5")
+    
+    st.markdown("""
+    <small style="color:#888;">
+    📊 Chaque ville peut obtenir jusqu’à 5 points selon ces critères :<br>
+    💰 Loyer ≤ budget • ☀️ Météo préférée • 💼 Domaine d’emploi dominant • 🏠 > 3 000 logements étudiants • 🎓 Présence d'établissements supérieurs<br>
+    Score final sur 100 = (points / 5) × 100
+    </small>
+    """, unsafe_allow_html=True)
 
 # --- Onglet 5 : À propos ---
 with onglet5:
@@ -263,7 +369,7 @@ with onglet5:
     - Objectif : Aider un étudiant à choisir sa ville idéale selon plusieurs critères
     - Données issues de : [data.gouv.fr](https://www.data.gouv.fr/), [geo.api.gouv.fr](https://geo.api.gouv.fr), [OpenWeatherMap](https://openweathermap.org)
     - Projet développé avec **Streamlit**
-    - Développé par Ekta & Angelikia
+    - Développé par Ekta Mistry & Angelikia Kavuansiko
 
-    🔗 [Lien GitHub](#)
+    🔗 [Lien GitHub](https://github.com/lovecookie93/City-Fighting)
     """)
