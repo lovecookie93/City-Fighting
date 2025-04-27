@@ -19,5 +19,5 @@ L'objectif principal est de proposer un outil simple, intuitif et interactif pou
 - Requests pour interagir avec des API publiques françaises
 
 Développé par : 
-        - Ekta Mistry : https://www.linkedin.com/in/ekta-mistry-756896268/
-        - Angelikia Kavuansiko : https://www.linkedin.com/in/angelikia-kavuansiko/
+- Ekta Mistry : https://www.linkedin.com/in/ekta-mistry-756896268/
+- Angelikia Kavuansiko : https://www.linkedin.com/in/angelikia-kavuansiko/
