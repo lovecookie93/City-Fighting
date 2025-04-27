@@ -7,7 +7,6 @@ from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 import folium
 from folium.plugins import MarkerCluster
-import geopandas as gpd
 import pandas as pd
 import branca
 
