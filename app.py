@@ -4,6 +4,12 @@ import pandas as pd
 import requests
 import folium
 from streamlit_folium import st_folium
+import matplotlib.pyplot as plt
+import folium
+from folium.plugins import MarkerCluster
+import geopandas as gpd
+import pandas as pd
+import branca
 
 # Fonction pour charger les villes depuis l'API
 @st.cache_data
@@ -109,7 +115,7 @@ st.title("🏙️ City Fighting - Comparateur de Villes")
 st.header("Explorez les villes pour vos études ou stages")
 
 # Onglets selon votre plan
-onglet1, onglet2, onglet3, onglet4, onglet5 = st.tabs(["Données générales", "Données complémentaires", "Classement", "Trouver ma ville idéale", "À propos"])
+onglet1, onglet2, onglet3, onglet4, onglet5 = st.tabs(["Données générales", "Données complémentaires", "Trouver ma ville idéale","Classement", "À propos"])
 
 # --- Onglet 1 ---
 with onglet1:
@@ -180,6 +186,115 @@ with onglet2:
                 </div>
                 """, unsafe_allow_html=True)
 
+
+    with st.expander("📈 Voir la comparaison du prix au m² entre les villes"):
+        if not (pd.isna(villes_df[villes_df["label"] == ville1].iloc[0]["loyer_m2"]) or pd.isna(villes_df[villes_df["label"] == ville2].iloc[0]["loyer_m2"])):
+            st.markdown("### 📊 Comparaison du prix au m² entre les villes")
+
+            import matplotlib.pyplot as plt
+
+            villes = [ville1, ville2]
+            loyers = [
+                villes_df[villes_df["label"] == ville1].iloc[0]["loyer_m2"],
+                villes_df[villes_df["label"] == ville2].iloc[0]["loyer_m2"]
+            ]
+
+            fig, ax = plt.subplots(figsize=(4, 3))
+            colors = ['#5D5FEC', '#13C4A3']
+
+            ax.bar(villes, loyers, color=colors, width=0.4)
+            ax.set_ylabel('€/m²', fontsize=9)
+            ax.grid(axis='y', linestyle='--', alpha=0.5)
+            ax.set_xticklabels(villes, fontsize=9)
+
+            for i, v in enumerate(loyers):
+                ax.text(i, v + 0.3, f"{v:.1f} €", ha='center', va='bottom', fontsize=7)
+
+            plt.tight_layout()
+            st.pyplot(fig)
+            plt.close(fig)  # ➡️ Très important pour éviter l'affichage 2x !
+
+
+
+    with st.expander("📈 Voir la répartition des types de logements (en %) pour chaque ville"):
+        import matplotlib.pyplot as plt
+
+        # Créer deux colonnes dans Streamlit
+        col1, col2 = st.columns(2)
+
+        for i, ville in enumerate([ville1, ville2]):
+            data_ville = villes_df[villes_df["label"] == ville].iloc[0]
+            
+            # Récupérer les valeurs des logements pour chaque type
+            etudiants = data_ville["logements_etudiants"]
+            sociaux = data_ville["logements_sociaux"]
+
+            # Si les données sont manquantes, on évite d'afficher un pie chart
+            if pd.isna(etudiants) or pd.isna(sociaux):
+                continue
+            
+            # Autres logements calculés par soustraction (si souhaité)
+            autres = 100000 - (etudiants + sociaux)  # Ex : tous les autres logements = 100000 - (etudiants + sociaux)
+
+            # S'assurer que la somme des pourcentages fait 100%
+            total_logements = etudiants + sociaux + autres
+            sizes = [etudiants, sociaux, autres] if autres > 0 else [etudiants, sociaux]  # Si autres est 0, on ne l'affiche pas
+            labels = ['Logements étudiants', 'Logements sociaux'] + (['Autres logements'] if autres > 0 else [])
+            colors = ['#5D5FEC', '#13C4A3', '#FFD700']  # Bleu pour étudiants, vert pour sociaux, or pour autres
+
+            # Créer un graphique Pie
+            fig, ax = plt.subplots(figsize=(3.5, 3.5))
+            wedges, texts, autotexts = ax.pie(
+                sizes,
+                labels=labels,
+                autopct='%1.1f%%',
+                startangle=90,
+                colors=colors,
+                textprops={'fontsize': 8}
+            )
+            ax.set_title(f"Répartition des logements à {ville}", fontsize=10)
+            ax.axis('equal')  # Pour un cercle parfait
+
+            # Affichage du graphique dans la colonne correspondante
+            if i == 0:
+                with col1:
+                    st.pyplot(fig)
+            else:
+                with col2:
+                    st.pyplot(fig)
+
+            plt.close(fig)  # Ferme la figure pour libérer la mémoire
+
+    # Créer une carte centrée sur la France
+    map_center = [46.603354, 1.888334]  # Coordonnées approximatives du centre de la France
+    m = folium.Map(location=map_center, zoom_start=6)
+
+    # Ajouter un MarkerCluster pour gérer les marqueurs
+    marker_cluster = MarkerCluster().add_to(m)
+
+    # Ajouter les marqueurs pour chaque ville
+    for index, row in villes_df.iterrows():
+        city = row["label"]
+        lat = row["latitude"]
+        lon = row["longitude"]
+        loyer = row["loyer_m2"]
+        
+        # Créer une popup avec les informations de la ville
+        popup_text = f"<strong>{city}</strong><br>Prix moyen au m²: {loyer} €/m²"
+        
+        # Ajouter un marqueur à la carte
+        folium.Marker(
+            location=[lat, lon],
+            popup=popup_text,
+            icon=folium.Icon(color="blue", icon="info-sign")
+        ).add_to(marker_cluster)
+
+    # Afficher la carte dans Streamlit
+    with st.expander("🗺️ Carte des loyers", expanded=True):
+        st.markdown("### Carte des loyers moyens au m² des villes")
+        st.write("Vous pouvez zoomer et explorer les prix des loyers par ville.")
+        # Afficher la carte dans Streamlit
+        st.components.v1.html(m._repr_html_(), height=500)
 
     
 
@@ -294,37 +409,8 @@ with onglet2:
 
 
 
-
-
-# --- Onglet 3 : Classement des villes étudiantes ---
+# --- Onglet 3 : Trouver ma ville idéale ---
 with onglet3:
-    st.markdown("## 🏆 Classement des villes étudiantes")
-
-    # Exemple de données réelles (à compléter)
-    classement_data = {
-        "Montpellier": {"rang": 1, "score": 99, "loyer_m2": 13.0},
-        "Rennes": {"rang": 2, "score": 94, "loyer_m2": 11.2},
-        "Caen": {"rang": 3, "score": 90, "loyer_m2": 9.3},
-        "Toulouse": {"rang": 3, "score": 90, "loyer_m2": 12.5},
-        "Grenoble": {"rang": 5, "score": 87, "loyer_m2": 11.0},
-        "Paris": {"rang": 6, "score": 85, "loyer_m2": 25.7}
-    }
-
-    classement_df = pd.DataFrame.from_dict(classement_data, orient='index')
-    classement_df = classement_df.reset_index().rename(columns={"index": "Ville", "rang": "Classement", "score": "Score", "loyer_m2": "Prix moyen au m²"})
-    classement_df = classement_df.sort_values("Classement")
-    st.dataframe(classement_df, use_container_width=True)
-
-    
-    st.markdown("""
-    <small style="color:#888;">
-    📊 Le score est calculé selon plusieurs critères : loyer abordable, secteurs d’emploi dominants, nombre de logements étudiants, et présence d’au moins deux établissements d’enseignement supérieur.  
-    Chaque critère rapporte un point, pour un total sur 5, transformé ici en score sur 100.
-    </small>
-    """, unsafe_allow_html=True)
-
-# --- Onglet 4 : Trouver ma ville idéale ---
-with onglet4:
     st.markdown("## 🎯 Trouver ma ville idéale")
 
     budget = st.slider("Quel est votre budget logement mensuel maximum (en €) ?", 300, 1200, 700)
@@ -359,6 +445,34 @@ with onglet4:
     </small>
     """, unsafe_allow_html=True)
 
+# --- Onglet 4 : Classement des villes étudiantes ---
+with onglet4:
+    st.markdown("## 🏆 Classement des villes étudiantes")
+
+    # Exemple de données réelles (à compléter)
+    classement_data = {
+        "Montpellier": {"rang": 1, "score": 99, "loyer_m2": 13.0},
+        "Rennes": {"rang": 2, "score": 94, "loyer_m2": 11.2},
+        "Caen": {"rang": 3, "score": 90, "loyer_m2": 9.3},
+        "Toulouse": {"rang": 3, "score": 90, "loyer_m2": 12.5},
+        "Grenoble": {"rang": 5, "score": 87, "loyer_m2": 11.0},
+        "Paris": {"rang": 6, "score": 85, "loyer_m2": 25.7}
+    }
+
+    classement_df = pd.DataFrame.from_dict(classement_data, orient='index')
+    classement_df = classement_df.reset_index().rename(columns={"index": "Ville", "rang": "Classement", "score": "Score", "loyer_m2": "Prix moyen au m²"})
+    classement_df = classement_df.sort_values("Classement")
+    st.dataframe(classement_df, use_container_width=True)
+
+    
+    st.markdown("""
+    <small style="color:#888;">
+    📊 Le score est calculé selon plusieurs critères : loyer abordable, secteurs d’emploi dominants, nombre de logements étudiants, et présence d’au moins deux établissements d’enseignement supérieur.  
+    Chaque critère rapporte un point, pour un total sur 5, transformé ici en score sur 100.
+    </small>
+    """, unsafe_allow_html=True)
+
+
 # --- Onglet 5 : À propos ---
 with onglet5:
     st.markdown("""
@@ -369,7 +483,10 @@ with onglet5:
     - Objectif : Aider un étudiant à choisir sa ville idéale selon plusieurs critères
     - Données issues de : [data.gouv.fr](https://www.data.gouv.fr/), [geo.api.gouv.fr](https://geo.api.gouv.fr), [OpenWeatherMap](https://openweathermap.org)
     - Projet développé avec **Streamlit**
-    - Développé par Ekta Mistry & Angelikia Kavuansiko
+    - Développé par : 
+        - Ekta Mistry : https://www.linkedin.com/in/ekta-mistry-756896268/
+        - Angelikia Kavuansiko : https://www.linkedin.com/in/angelikia-kavuansiko/
+
 
     🔗 [Lien GitHub](https://github.com/lovecookie93/City-Fighting)
     """)
