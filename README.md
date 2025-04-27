@@ -1,30 +1,23 @@
-# City-Fighting
-SAE Outils Décisionnels avec fx Jollois
+# City Fighting - Comparateur de Villes 
 
+## Bienvenue sur notre projet Streamlit !
+Notre application permet de comparer les villes françaises selon plusieurs critères de qualité de vie afin d'aider les utilisateurs à trouver leur ville idéale.
 
-Soutenance 24 avril  : présentation de l’app 
-Objectif : 
-Application web permettant de comparer 2 villes française selon des critères 
-L'utilisateur doit pouvoir choisir les villes  
-Ville qui a plus de 20000 habitants
+👉 Application en ligne : https://city-fighting-ektaangelikia.streamlit.app/ 
 
-Application à déployer doit posséder une adresse  
-Exemple d’outil qu’on peut utiliser pour la gestion des données : dataiku 
+🎯 Objectif :
+L'objectif principal est de proposer un outil simple, intuitif et interactif pour :
+- Explorer et comparer les villes françaises selon différents indicateurs (logement, emploi, environnement, etc).
+- Visualiser des données sous forme de graphiques et de cartes.
+- Aider à la prise de décision pour un déménagement ou une installation.
 
+🛠️ Technologies utilisées : 
+- Python
+- Streamlit pour le développement de l'interface web
+- Pandas pour la manipulation des données
+- Matplotlib et Plotly pour la création des graphiques
+- Requests pour interagir avec des API publiques françaises
 
-Localisation, Nombre d’habitants, nombre d’emplois
-Informations sur logement pour louer, nombre de logements pour acheter 
- 
-Rendu :
-Rapport  
-Choix des sources 
-Mode d’emploi  
-Adresse de l’interface 
-Script pour import des données 
-Rendre sur moodle 
-
-
-Possible d’intégrer les parties du rapport dans l’application dans des onglets  
-
-
-Application choisie : Streamlit
+Développé par : 
+- Ekta Mistry : https://www.linkedin.com/in/ekta-mistry-756896268/
+- Angelikia Kavuansiko : https://www.linkedin.com/in/angelikia-kavuansiko/

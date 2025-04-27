@@ -4,46 +4,6 @@ import pandas as pd
 import requests
 import folium
 from streamlit_folium import st_folium
-import matplotlib.pyplot as plt
-import folium
-from folium.plugins import MarkerCluster
-import pandas as pd
-import branca
-import base64
-import urllib.parse  
-
-# --- Récupération du token d'authentification France Travail
-def get_token():
-    client_id = "PAR_cityfighting_4168d464ef7e276ef2adb567c9bf4ea8c96d81d393b2510b2c15dfd354aa98cd"
-    client_secret = "7d029ed409f381d146b2311e2e5e363b90479f3a4a48d3a8435d73dea8244eb6"
-    
-    credentials = f"{client_id}:{client_secret}"
-    encoded_credentials = base64.b64encode(credentials.encode()).decode()
-
-    headers = {
-        "Authorization": f"Basic {encoded_credentials}",
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    data = {"grant_type": "client_credentials", "scope": "api_offresdemploiv2 o2dsoffre"}
-    
-    response = requests.post(
-        "https://entreprise.pole-emploi.fr/connexion/oauth2/access_token?realm=/partenaire",
-        headers=headers,
-        data=data
-    )
-
-    if response.status_code == 200:
-        return response.json().get("access_token")
-    else:
-        return None
-
-# On génère le token
-token = get_token()
-
-# Vérification rapide si le token est bien récupéré
-if token is None:
-    st.error("❌ Impossible d'obtenir le token France Travail. Merci de réessayer plus tard.")
-
 
 # Fonction pour charger les villes depuis l'API
 @st.cache_data
@@ -149,7 +109,7 @@ st.title("🏙️ City Fighting - Comparateur de Villes")
 st.header("Explorez les villes pour vos études ou stages")
 
 # Onglets selon votre plan
-onglet1, onglet2, onglet3, onglet4, onglet5, onglet6 = st.tabs(["Données générales", "Données complémentaires", "Trouver ma ville idéale", "Classement", "Offres d'emploi", "À propos"])
+onglet1, onglet2, onglet3, onglet4, onglet5 = st.tabs(["Données générales", "Données complémentaires", "Classement", "Trouver ma ville idéale", "À propos"])
 
 # --- Onglet 1 ---
 with onglet1:
@@ -479,38 +439,7 @@ with onglet3:
     </small>
     """, unsafe_allow_html=True)
 
-# --- Onglet 4 : Classement des villes étudiantes ---
-with onglet4:
-    st.markdown("## 🏆 Classement des villes étudiantes")
-
-    # Exemple de données réelles (à compléter)
-    classement_data = {
-        "Montpellier": {"rang": 1, "score": 99, "loyer_m2": 13.0},
-        "Rennes": {"rang": 2, "score": 94, "loyer_m2": 11.2},
-        "Caen": {"rang": 3, "score": 90, "loyer_m2": 9.3},
-        "Toulouse": {"rang": 3, "score": 90, "loyer_m2": 12.5},
-        "Grenoble": {"rang": 5, "score": 87, "loyer_m2": 11.0},
-        "Paris": {"rang": 6, "score": 85, "loyer_m2": 25.7}
-    }
-
-    classement_df = pd.DataFrame.from_dict(classement_data, orient='index')
-    classement_df = classement_df.reset_index().rename(columns={"index": "Ville", "rang": "Classement", "score": "Score", "loyer_m2": "Prix moyen au m²"})
-    classement_df = classement_df.sort_values("Classement")
-    st.dataframe(classement_df, use_container_width=True)
-
-    
-    st.markdown("""
-    <small style="color:#888;">
-    📊 Le score est calculé selon plusieurs critères : loyer abordable, secteurs d’emploi dominants, nombre de logements étudiants, et présence d’au moins deux établissements d’enseignement supérieur.  
-    Chaque critère rapporte un point, pour un total sur 5, transformé ici en score sur 100.
-    </small>
-    """, unsafe_allow_html=True)
-
-
-
-# --- Onglet Offres d'emploi ---
-import urllib.parse  # Mets cette ligne en haut si pas encore faite
-
+# --- Onglet 5 : À propos ---
 with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
