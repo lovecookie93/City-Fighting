@@ -1,30 +1,25 @@
 # City-Fighting
-SAE Outils Décisionnels avec fx Jollois
 
+🏡 Application Streamlit - Trouver votre Ville Idéale
+Bienvenue sur notre projet Streamlit !
+Cette application permet de comparer les villes françaises selon plusieurs critères de qualité de vie afin d'aider les utilisateurs à trouver leur ville idéale.
 
-Soutenance 24 avril  : présentation de l’app 
-Objectif : 
-Application web permettant de comparer 2 villes française selon des critères 
-L'utilisateur doit pouvoir choisir les villes  
-Ville qui a plus de 20000 habitants
+🎯 Objectif
+L'objectif principal est de proposer un outil simple, intuitif et interactif pour :
 
-Application à déployer doit posséder une adresse  
-Exemple d’outil qu’on peut utiliser pour la gestion des données : dataiku 
+Explorer et comparer les villes françaises selon différents indicateurs (logement, emploi, environnement, etc).
 
+Visualiser des données sous forme de graphiques et de cartes.
 
-Localisation, Nombre d’habitants, nombre d’emplois
-Informations sur logement pour louer, nombre de logements pour acheter 
- 
-Rendu :
-Rapport  
-Choix des sources 
-Mode d’emploi  
-Adresse de l’interface 
-Script pour import des données 
-Rendre sur moodle 
+Aider à la prise de décision pour un déménagement ou une installation.
 
+🛠️ Technologies utilisées
+Python
 
-Possible d’intégrer les parties du rapport dans l’application dans des onglets  
+Streamlit pour le développement de l'interface web
 
+Pandas pour la manipulation des données
 
-Application choisie : Streamlit
+Matplotlib et Plotly pour la création des graphiques
+
+Requests pour interagir avec des API publiques françaises
