@@ -507,8 +507,7 @@ with onglet4:
 with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
-    st.markdown("Entrez un mot-clé pour filtrer les offres disponibles par ville.")
-    keyword = st.text_input("🔎 Mot-clé (ex: Data, Développeur, Marketing...)")
+    keyword = st.text_input("🔎 Entrez un mot-clé pour filtrer (optionnel)")
 
     lancer_recherche = st.button("🔄 Rechercher")
 
@@ -526,33 +525,35 @@ with onglet5:
                     continue
 
                 try:
-                    # --- On prépare la recherche ---
-                    departement_code = data_ville.iloc[0]["departement_code"]
+                    # Récupère le code INSEE pour la commune
+                    code_insee = data_ville.iloc[0]["code_insee"]
 
-                    # ➔ on recherche sur 0-49 résultats + autour de la ville + mots similaires
-                    base_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?"
-                    base_url += f"departement={departement_code}&range=0-49&distance=30"
+                    # ➔ Si pas de code INSEE, fallback sur le département
+                    if pd.isna(code_insee) or code_insee == "":
+                        departement = data_ville.iloc[0]["departement_code"]
+                        api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={departement}&range=0-49&distance=30"
+                    else:
+                        api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?commune={code_insee}&distance=30&range=0-49"
 
                     if keyword:
-                        base_url += f"&motsCles={keyword}"
+                        api_url += f"&motsCles={keyword}"
 
                     headers = {
                         "Authorization": f"Bearer {token}"
                     }
-                    r = requests.get(base_url, headers=headers)
+                    r = requests.get(api_url, headers=headers)
 
                     if r.status_code == 200:
                         offres = r.json().get("resultats", [])
 
-                        # ➔ On ne filtre pas trop fort sinon on perd Paris/Lyon
-                        offres_utiles = []
-                        for offre in offres:
-                            lieu = offre.get('lieuTravail', {}).get('libelle', '').lower()
-                            if ville.lower() in lieu or (not keyword):  # soit dans la bonne zone soit on affiche tout
-                                offres_utiles.append(offre)
+                        # Si aucune offre trouvée mais on a mis un mot-clé, enlever le filtre pour tout afficher
+                        if not offres and keyword:
+                            r2 = requests.get(api_url.replace(f"&motsCles={keyword}", ""), headers=headers)
+                            if r2.status_code == 200:
+                                offres = r2.json().get("resultats", [])
 
-                        if offres_utiles:
-                            for offre in offres_utiles:
+                        if offres:
+                            for offre in offres:
                                 st.markdown(f"🔹 **{offre['intitule']}**")
                                 st.markdown(f"📍 {offre['lieuTravail']['libelle']}")
                                 st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
@@ -563,9 +564,11 @@ with onglet5:
 
                     else:
                         st.error(f"Erreur {r.status_code} lors de la récupération des offres pour {ville} 🚨")
+                        st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
 
                 except Exception as e:
                     st.error(f"Erreur lors de la récupération des offres pour {ville} 🚨")
+                    st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
 
 # --- Onglet 6 : À propos ---
 with onglet6:
