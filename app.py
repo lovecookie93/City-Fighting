@@ -506,51 +506,38 @@ with onglet4:
     </small>
     """, unsafe_allow_html=True)
 
-# --- Onglet 5 : À propos ---
-
+# --- Onglet Offres d'emploi ---
 with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
-    st.markdown("Entrez un mot-clé pour filtrer les offres disponibles par ville.")
+    st.markdown("Entrez un mot-clé pour chercher des offres en France entière.")
     keyword = st.text_input("🔎 Mot-clé (ex: Data, Développeur, Marketing...)", "")
 
-    col1, col2 = st.columns(2)
+    if keyword:
+        api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?motsCles={keyword}&range=0-10"
+        headers = {
+            "Authorization": f"Bearer {token}"  # Utilise bien ton token récupéré en haut
+        }
 
-    for col, ville in zip([col1, col2], [ville1, ville2]):
-        data_ville = villes_df[villes_df["label"] == ville]
+        try:
+            r = requests.get(api_url, headers=headers)
 
-        with col:
-            st.markdown(f"### 📍 {ville}")
-
-            if data_ville.empty:
-                st.error(f"Impossible de trouver les informations pour {ville}.")
-                continue
-
-            try:
-                keyword_encoded = urllib.parse.quote(keyword)  # Encode proprement le mot-clé
-                commune = data_ville.iloc[0]['label']  # Utiliser le nom de la ville pour la recherche
-
-                api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?commune={commune}&motsCles={keyword_encoded}&range=0-10"
-
-                headers = {
-                    "Authorization": f"Bearer {token}"
-                }
-                r = requests.get(api_url, headers=headers)
-
-                if r.status_code == 200:
-                    offres = r.json().get("resultats", [])
-                    if offres:
-                        for offre in offres:
-                            st.markdown(f"🔹 **{offre['intitule']}**")
-                            st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
-                            st.markdown("---")
-                    else:
-                        st.warning(f"Aucune offre trouvée pour {ville}" + (f" avec le mot-clé '{keyword}'." if keyword else "."))
+            if r.status_code == 200:
+                offres = r.json().get("resultats", [])
+                if offres:
+                    for offre in offres:
+                        st.markdown(f"🔹 **{offre['intitule']}**")
+                        st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
+                        st.markdown("---")
                 else:
-                    st.error(f"Erreur {r.status_code} lors de la récupération des offres pour {ville} 🚨")
+                    st.warning("Aucune offre trouvée pour ce mot-clé.")
+            else:
+                st.error(f"Erreur {r.status_code} lors de la récupération des offres 🚨")
 
-            except Exception as e:
-                st.error(f"Erreur lors de la récupération des offres pour {ville} 🚨")
+        except Exception as e:
+            st.error(f"Erreur inattendue lors de la récupération des offres 🚨")
+    else:
+        st.info("Veuillez entrer un mot-clé pour afficher les offres.")
 
 # --- Onglet 6 : À propos ---
 with onglet6:
