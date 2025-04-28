@@ -528,14 +528,18 @@ with onglet5:
                         continue
 
                     try:
-                        # Recherche par département, plus fiable
+                        # Recherche par département
                         departement = data_ville.iloc[0]['departement_code']
+                        insee_code = data_ville.iloc[0]['insee_code']  # <-- récupère l'INSEE
                         url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={departement}&motsCles={keyword}&distance=30"
 
                         headers = {
                             "Authorization": f"Bearer {token}"
                         }
                         r = requests.get(url, headers=headers)
+
+                        # Lien personnalisé France Travail en backup
+                        france_travail_url = f"https://candidat.francetravail.fr/offres/recherche?lieux={insee_code}&motsCles={keyword}&offresPartenaires=true&rayon=10&tri=0"
 
                         if r.status_code == 200:
                             offres = r.json().get("resultats", [])
@@ -547,14 +551,14 @@ with onglet5:
                                     st.markdown("---")
                             else:
                                 st.warning(f"Aucune offre trouvée pour {ville} avec '{keyword}'.")
-                                st.markdown(f"👉 [Voir toutes les offres sur France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
+                                st.markdown(f"👉 [Voir d'autres offres sur France Travail ➔]({france_travail_url})")
                         else:
                             st.error(f"Erreur {r.status_code} lors de la récupération des offres pour {ville} 🚨")
-                            st.markdown(f"👉 [Voir toutes les offres sur France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
+                            st.markdown(f"👉 [Voir d'autres offres sur France Travail ➔]({france_travail_url})")
 
                     except Exception as e:
                         st.error(f"Erreur lors de la récupération des offres pour {ville} 🚨")
-                        st.markdown(f"👉 [Voir toutes les offres sur France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
+                        st.markdown(f"👉 [Voir d'autres offres sur France Travail ➔]({france_travail_url})")
 
 # --- Onglet 6 : À propos ---
 with onglet6:
