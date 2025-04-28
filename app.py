@@ -8,9 +8,37 @@ import matplotlib.pyplot as plt
 import folium
 from folium.plugins import MarkerCluster
 import pandas as pd
+import base64
 import branca
 import urllib.parse  
 
+# --- Récupération du token d'authentification France Travail
+def get_token():
+    client_id = "PAR_cityfighting_4168d464ef7e276ef2adb567c9bf4ea8c96d81d393b2510b2c15dfd354aa98cd"
+    client_secret = "7d029ed409f381d146b2311e2e5e363b90479f3a4a48d3a8435d73dea8244eb6"
+    
+    credentials = f"{client_id}:{client_secret}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+    headers = {
+        "Authorization": f"Basic {encoded_credentials}",
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    data = {"grant_type": "client_credentials", "scope": "api_offresdemploiv2 o2dsoffre"}
+    
+    response = requests.post(
+        "https://entreprise.pole-emploi.fr/connexion/oauth2/access_token?realm=/partenaire",
+        headers=headers,
+        data=data
+    )
+
+    if response.status_code == 200:
+        return response.json().get("access_token")
+    else:
+        return None
+
+# Puis on génère ton token une fois pour tout ton Streamlit :
+token = get_token()
 
 # Fonction pour charger les villes depuis l'API
 @st.cache_data
@@ -477,39 +505,45 @@ with onglet4:
 with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
-    with st.expander("🔎 Cliquez ici pour rechercher des offres d'emploi"):
-        widget_code = """
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-            <script src="https://francetravail.io/data/widget/pe-offres-emploi.js"></script>
-        </head>
-        <body>
-            <pe-offres-emploi></pe-offres-emploi>
-            <script>
-                var macarte = document.querySelector('pe-offres-emploi');
-                macarte.token = 'TON_TOKEN_WIDGET_ICI'; // Remplace par ton token widget France Travail
+    search_keyword = st.text_input("🔎 Filtrer par mot-clé (optionnel)", "")
 
-                macarte.options = {
-                    rechercheAuto: true,
-                    zoomInitial: 5,
-                    positionInitiale: [2.09,46.505],
-                    criterias: {
-                        motsCles: { value: null, show: true, order: 1 },
-                        typeContrat: { value: null, show: true, order: 2 },
-                        tempsPlein: { value: null, show: true, order: 3 },
-                        commune: { value: null, show: true, order: 0 }
-                    },
-                    technicalParameters: {
-                        range: { value: '0-49', show: false, order: 0 }
-                    }
-                };
-            </script>
-        </body>
-        </html>
-        """
+    col1, col2 = st.columns(2)
 
-        st.components.v1.html(widget_code, height=850)
+    for col, ville in zip([col1, col2], [ville1, ville2]):
+        ville_data = villes_df[villes_df["label"] == ville].iloc[0]
+        departement = ville_data["departement_code"]
+
+        with col:
+            st.subheader(f"📍 {ville}")
+
+            params = {
+                "departement": departement,
+                "range": "0-19"
+            }
+            if search_keyword.strip():
+                params["motsCles"] = search_keyword.strip()
+
+            headers = {
+                "Authorization": f"Bearer {token}"
+            }
+            url = "https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search"
+
+            response = requests.get(url, headers=headers, params=params)
+
+            if response.status_code == 200:
+                offres = response.json().get("resultats", [])
+                if offres:
+                    for offre in offres:
+                        st.markdown(f"**🔹 {offre['intitule']}**")
+                        st.caption(f"📃 {offre.get('typeContrat', 'Type de contrat inconnu')}")
+                        lieu = offre.get('lieuTravail', {}).get('libelle', 'Lieu inconnu')
+                        st.caption(f"📍 {lieu}")
+                        st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
+                        st.markdown("---")
+                else:
+                    st.warning(f"Aucune offre trouvée pour {ville}" + (f" avec le mot-clé '{search_keyword}'." if search_keyword else "."))
+            else:
+                st.error(f"Erreur {response.status_code} lors de la récupération des offres pour {ville} 🚨")
 
 # --- Onglet 6 : À propos ---
 with onglet6:
