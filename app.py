@@ -91,8 +91,10 @@ villes_df = villes_df[villes_df["departement_code"].astype(str).isin(
 # Chargement des données enrichies depuis CSV local
 @st.cache_data
 def load_ville_info():
-    df_info = pd.read_csv("ville_info_enrichi_massif.csv")
+    df_info = pd.read_csv("ville_info_enrichi_massif_corrige.csv")  # Ton nouveau fichier corrigé
+    df_info["insee_code"] = df_info["insee_code"].astype(str).str.zfill(5)  # Bien formater sur 5 caractères
     return df_info
+
 
 @st.cache_data
 def load_loyers_departement():
@@ -524,7 +526,13 @@ with onglet5:
                     continue
 
                 try:
-                    base_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={data_ville.iloc[0]['departement_code']}&range=0-30"
+                    # --- On prépare la recherche ---
+                    departement_code = data_ville.iloc[0]["departement_code"]
+
+                    # ➔ on recherche sur 0-49 résultats + autour de la ville + mots similaires
+                    base_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?"
+                    base_url += f"departement={departement_code}&range=0-49&distance=30"
+
                     if keyword:
                         base_url += f"&motsCles={keyword}"
 
@@ -536,14 +544,15 @@ with onglet5:
                     if r.status_code == 200:
                         offres = r.json().get("resultats", [])
 
-                        # ➡️ Important : filtre par ville réelle dans le libellé de l'offre
-                        offres = [
-                            offre for offre in offres
-                            if ville.lower() in offre.get('lieuTravail', {}).get('libelle', '').lower()
-                        ]
+                        # ➔ On ne filtre pas trop fort sinon on perd Paris/Lyon
+                        offres_utiles = []
+                        for offre in offres:
+                            lieu = offre.get('lieuTravail', {}).get('libelle', '').lower()
+                            if ville.lower() in lieu or (not keyword):  # soit dans la bonne zone soit on affiche tout
+                                offres_utiles.append(offre)
 
-                        if offres:
-                            for offre in offres[:10]:  # Limite d'affichage à 10 offres
+                        if offres_utiles:
+                            for offre in offres_utiles:
                                 st.markdown(f"🔹 **{offre['intitule']}**")
                                 st.markdown(f"📍 {offre['lieuTravail']['libelle']}")
                                 st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
