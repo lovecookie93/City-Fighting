@@ -230,51 +230,45 @@ with onglet2:
                 villes_df[villes_df["label"] == ville2].iloc[0]["loyer_m2"]
             ]
 
-            fig, ax = plt.subplots(figsize=(4, 3))
+            fig, ax = plt.subplots(figsize=(3, 2))  # ➔ réduit un peu la taille
             colors = ['#5D5FEC', '#13C4A3']
 
             ax.bar(villes, loyers, color=colors, width=0.4)
             ax.set_ylabel('€/m²', fontsize=9)
             ax.grid(axis='y', linestyle='--', alpha=0.5)
+            ax.set_xticks(range(len(villes)))
             ax.set_xticklabels(villes, fontsize=9)
 
             for i, v in enumerate(loyers):
-                ax.text(i, v + 0.3, f"{v:.1f} €", ha='center', va='bottom', fontsize=7)
+                ax.text(i, v + 0.2, f"{v:.1f} €", ha='center', va='bottom', fontsize=7)
 
             plt.tight_layout()
-            st.pyplot(fig)
-            plt.close(fig)  # ➡️ Très important pour éviter l'affichage 2x !
+            st.pyplot(fig, use_container_width=True)  # ➔ ajouté ici !
+            plt.close(fig)
+
 
 
 
     with st.expander("📈 Voir la répartition des types de logements (en %) pour chaque ville"):
         import matplotlib.pyplot as plt
 
-        # Créer deux colonnes dans Streamlit
         col1, col2 = st.columns(2)
 
         for i, ville in enumerate([ville1, ville2]):
             data_ville = villes_df[villes_df["label"] == ville].iloc[0]
             
-            # Récupérer les valeurs des logements pour chaque type
             etudiants = data_ville["logements_etudiants"]
             sociaux = data_ville["logements_sociaux"]
 
-            # Si les données sont manquantes, on évite d'afficher un pie chart
             if pd.isna(etudiants) or pd.isna(sociaux):
                 continue
             
-            # Autres logements calculés par soustraction (si souhaité)
-            autres = 100000 - (etudiants + sociaux)  # Ex : tous les autres logements = 100000 - (etudiants + sociaux)
-
-            # S'assurer que la somme des pourcentages fait 100%
-            total_logements = etudiants + sociaux + autres
-            sizes = [etudiants, sociaux, autres] if autres > 0 else [etudiants, sociaux]  # Si autres est 0, on ne l'affiche pas
+            autres = 100000 - (etudiants + sociaux)
+            sizes = [etudiants, sociaux, autres] if autres > 0 else [etudiants, sociaux]
             labels = ['Logements étudiants', 'Logements sociaux'] + (['Autres logements'] if autres > 0 else [])
-            colors = ['#5D5FEC', '#13C4A3', '#FFD700']  # Bleu pour étudiants, vert pour sociaux, or pour autres
+            colors = ['#5D5FEC', '#13C4A3', '#FFD700']
 
-            # Créer un graphique Pie
-            fig, ax = plt.subplots(figsize=(3.5, 3.5))
+            fig, ax = plt.subplots(figsize=(2.8, 2.8))  # ➔ plus petit
             wedges, texts, autotexts = ax.pie(
                 sizes,
                 labels=labels,
@@ -284,17 +278,17 @@ with onglet2:
                 textprops={'fontsize': 8}
             )
             ax.set_title(f"Répartition des logements à {ville}", fontsize=10)
-            ax.axis('equal')  # Pour un cercle parfait
+            ax.axis('equal')
 
-            # Affichage du graphique dans la colonne correspondante
             if i == 0:
                 with col1:
-                    st.pyplot(fig)
+                    st.pyplot(fig, use_container_width=True)  # ➔ ajouté
             else:
                 with col2:
-                    st.pyplot(fig)
+                    st.pyplot(fig, use_container_width=True)  # ➔ ajouté
 
-            plt.close(fig)  # Ferme la figure pour libérer la mémoire
+            plt.close(fig)
+
 
     # Créer une carte centrée sur la France
     map_center = [46.603354, 1.888334]  # Coordonnées approximatives du centre de la France
