@@ -506,50 +506,64 @@ with onglet4:
     </small>
     """, unsafe_allow_html=True)
 
-# --- Onglet Offres d'emploi ---
+# --- Onglet Offres d'emploi --- 
 with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
-    st.markdown("Entrez un mot-clé pour chercher des offres en France entière (filtré par départements populaires).")
-    keyword = st.text_input("🔎 Mot-clé (ex: Data, Développeur, Marketing...)", "")
+    st.markdown("Choisissez un domaine pour chercher des offres par ville.")
+    domaine = st.selectbox("🏢 Domaine :", ["Informatique", "Commerce", "BTP", "Finance", "Santé", "Enseignement", "Agroalimentaire", "Tourisme"])
 
-    # Exemples de départements IDF pour éviter erreur 206
-    departements = ["75", "92", "93", "94"]
+    domaine_vers_codes_rome = {
+        "Informatique": ["M1802", "M1803", "M1805"],
+        "Commerce": ["D1407", "D1505"],
+        "BTP": ["F1106", "F1107"],
+        "Finance": ["C1202", "C1206"],
+        "Santé": ["J1501", "J1502"],
+        "Enseignement": ["K2106", "K2109"],
+        "Agroalimentaire": ["A1406", "A1407"],
+        "Tourisme": ["G1101", "G1102"]
+    }
 
-    if keyword:
-        all_offres = []
+    codes_rome = domaine_vers_codes_rome.get(domaine, [])
 
-        for dep in departements:
-            api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={dep}&motsCles={keyword}&range=0-10"
-            headers = {
-                "Authorization": f"Bearer {token}"
-            }
+    col1, col2 = st.columns(2)
+    for col, ville in zip([col1, col2], [ville1, ville2]):
+        data_ville = villes_df[villes_df["label"] == ville]
 
-            try:
-                r = requests.get(api_url, headers=headers)
+        with col:
+            st.markdown(f"### 📍 {ville}")
 
-                if r.status_code == 200:
-                    offres = r.json().get("resultats", [])
-                    all_offres.extend(offres)
-                else:
-                    st.error(f"Erreur {r.status_code} pour le département {dep} 🚨")
-                    break
+            if data_ville.empty:
+                st.error(f"Impossible de trouver les informations pour {ville}.")
+                continue
 
-            except Exception as e:
-                st.error(f"Erreur inattendue pour le département {dep} 🚨")
-                break
+            departement_code = data_ville.iloc[0]["departement_code"]
+            found_offers = False
 
-        if all_offres:
-            st.markdown(f"### 🔎 Résultats pour '{keyword}'")
-            for offre in all_offres:
-                st.markdown(f"🔹 **{offre['intitule']}**")
-                st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
-                st.markdown("---")
-        else:
-            st.warning(f"Aucune offre trouvée pour '{keyword}'.")
+            for rome_code in codes_rome:
+                api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={departement_code}&rome={rome_code}&range=0-5"
+                headers = {
+                    "Authorization": f"Bearer {token}"
+                }
+                try:
+                    r = requests.get(api_url, headers=headers)
+                    if r.status_code == 200:
+                        offres = r.json().get("resultats", [])
+                        if offres:
+                            found_offers = True
+                            for offre in offres:
+                                st.markdown(f"🔹 **{offre['intitule']}**")
+                                st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
+                                st.markdown("---")
+                    else:
+                        # on continue sans casser si une recherche ROME échoue
+                        continue
+                except Exception as e:
+                    continue
 
-    else:
-        st.info("Veuillez entrer un mot-clé pour afficher les offres.")
+            if not found_offers:
+                st.warning(f"Aucune offre trouvée pour {ville} dans le domaine '{domaine}'.")
+
 
 # --- Onglet 6 : À propos ---
 with onglet6:
