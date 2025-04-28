@@ -510,32 +510,44 @@ with onglet4:
 with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
-    st.markdown("Entrez un mot-clé pour chercher des offres en France entière.")
+    st.markdown("Entrez un mot-clé pour chercher des offres en France entière (filtré par départements populaires).")
     keyword = st.text_input("🔎 Mot-clé (ex: Data, Développeur, Marketing...)", "")
 
+    # Exemples de départements IDF pour éviter erreur 206
+    departements = ["75", "92", "93", "94"]
+
     if keyword:
-        api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?motsCles={keyword}&range=0-10"
-        headers = {
-            "Authorization": f"Bearer {token}"  # Utilise bien ton token récupéré en haut
-        }
+        all_offres = []
 
-        try:
-            r = requests.get(api_url, headers=headers)
+        for dep in departements:
+            api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={dep}&motsCles={keyword}&range=0-10"
+            headers = {
+                "Authorization": f"Bearer {token}"
+            }
 
-            if r.status_code == 200:
-                offres = r.json().get("resultats", [])
-                if offres:
-                    for offre in offres:
-                        st.markdown(f"🔹 **{offre['intitule']}**")
-                        st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
-                        st.markdown("---")
+            try:
+                r = requests.get(api_url, headers=headers)
+
+                if r.status_code == 200:
+                    offres = r.json().get("resultats", [])
+                    all_offres.extend(offres)
                 else:
-                    st.warning("Aucune offre trouvée pour ce mot-clé.")
-            else:
-                st.error(f"Erreur {r.status_code} lors de la récupération des offres 🚨")
+                    st.error(f"Erreur {r.status_code} pour le département {dep} 🚨")
+                    break
 
-        except Exception as e:
-            st.error(f"Erreur inattendue lors de la récupération des offres 🚨")
+            except Exception as e:
+                st.error(f"Erreur inattendue pour le département {dep} 🚨")
+                break
+
+        if all_offres:
+            st.markdown(f"### 🔎 Résultats pour '{keyword}'")
+            for offre in all_offres:
+                st.markdown(f"🔹 **{offre['intitule']}**")
+                st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
+                st.markdown("---")
+        else:
+            st.warning(f"Aucune offre trouvée pour '{keyword}'.")
+
     else:
         st.info("Veuillez entrer un mot-clé pour afficher les offres.")
 
