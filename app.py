@@ -9,40 +9,7 @@ import folium
 from folium.plugins import MarkerCluster
 import pandas as pd
 import branca
-import base64
 import urllib.parse  
-
-# --- Récupération du token d'authentification France Travail
-def get_token():
-    client_id = "PAR_cityfighting_4168d464ef7e276ef2adb567c9bf4ea8c96d81d393b2510b2c15dfd354aa98cd"
-    client_secret = "7d029ed409f381d146b2311e2e5e363b90479f3a4a48d3a8435d73dea8244eb6"
-    
-    credentials = f"{client_id}:{client_secret}"
-    encoded_credentials = base64.b64encode(credentials.encode()).decode()
-
-    headers = {
-        "Authorization": f"Basic {encoded_credentials}",
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    data = {"grant_type": "client_credentials", "scope": "api_offresdemploiv2 o2dsoffre"}
-    
-    response = requests.post(
-        "https://entreprise.pole-emploi.fr/connexion/oauth2/access_token?realm=/partenaire",
-        headers=headers,
-        data=data
-    )
-
-    if response.status_code == 200:
-        return response.json().get("access_token")
-    else:
-        return None
-
-# On génère le token
-token = get_token()
-
-# Vérification rapide si le token est bien récupéré
-if token is None:
-    st.error("❌ Impossible d'obtenir le token France Travail. Merci de réessayer plus tard.")
 
 
 # Fonction pour charger les villes depuis l'API
@@ -506,62 +473,43 @@ with onglet4:
     </small>
     """, unsafe_allow_html=True)
 
-# --- Onglet Offres d'emploi ---
+# --- Onglet 5 : Offres d'emploi ---
 with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
-    st.markdown("Choisissez un domaine pour chercher des offres par ville (département) 🔎.")
+    with st.expander("🔎 Cliquez ici pour rechercher des offres d'emploi"):
+        widget_code = """
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <script src="https://francetravail.io/data/widget/pe-offres-emploi.js"></script>
+        </head>
+        <body>
+            <pe-offres-emploi></pe-offres-emploi>
+            <script>
+                var macarte = document.querySelector('pe-offres-emploi');
+                macarte.token = 'TON_TOKEN_WIDGET_ICI'; // Remplace par ton token widget France Travail
 
-    domaines = [
-        "Informatique", "Santé", "Tourisme", "Commerce", "Finance", "Éducation", "BTP", "Agroalimentaire", "Communication"
-    ]
-    domaine_choisi = st.selectbox("🏢 Domaine :", domaines)
-
-    col1, col2 = st.columns(2)
-
-    ville_to_dept = dict(zip(villes_df["label"], villes_df["departement_code"]))
-
-    for col, ville in zip([col1, col2], [ville1, ville2]):
-        code_departement = ville_to_dept.get(ville, None)
-
-        with col:
-            st.markdown(f"### 📍 {ville}")
-
-            if not code_departement:
-                st.error(f"Impossible de trouver le code département pour {ville} 🚨")
-                continue
-
-            # Message de chargement pendant l'API
-            with st.spinner(f"Recherche des offres pour {ville}... ⏳"):
-                try:
-                    api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={code_departement}&motsCles={domaine_choisi}&range=0-20"
-                    headers = {
-                        "Authorization": f"Bearer {token}"
+                macarte.options = {
+                    rechercheAuto: true,
+                    zoomInitial: 5,
+                    positionInitiale: [2.09,46.505],
+                    criterias: {
+                        motsCles: { value: null, show: true, order: 1 },
+                        typeContrat: { value: null, show: true, order: 2 },
+                        tempsPlein: { value: null, show: true, order: 3 },
+                        commune: { value: null, show: true, order: 0 }
+                    },
+                    technicalParameters: {
+                        range: { value: '0-49', show: false, order: 0 }
                     }
-                    r = requests.get(api_url, headers=headers)
+                };
+            </script>
+        </body>
+        </html>
+        """
 
-                    if r.status_code == 200:
-                        offres = r.json().get("resultats", [])
-                        if offres:
-                            for offre in offres:
-                                intitule = offre.get('intitule', 'Titre non disponible')
-                                lieu = offre.get('lieuTravail', {}).get('libelle', 'Lieu non précisé')
-                                entreprise = offre.get('entreprise', {}).get('nom', 'Entreprise non précisée')
-                                url = offre['origineOffre'].get('urlOrigine', '#')
-
-                                st.success(f"**{intitule}**\n\n📍 {lieu} | 🏢 {entreprise}\n\n👉 [Voir l'offre ➔]({url})")
-                                st.markdown("---")
-                        else:
-                            st.warning(f"❌ Aucune offre trouvée pour **{ville}** dans le domaine **'{domaine_choisi}'**.")
-                            st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche?motsCles={domaine_choisi}&departement={code_departement})")
-
-                    else:
-                        st.warning(f"⚡ L'API n'a pas répondu correctement ({r.status_code}) pour {ville}.")
-                        st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche?motsCles={domaine_choisi}&departement={code_departement})")
-
-                except Exception as e:
-                    st.warning(f"⚡ Erreur inattendue pour {ville}.")
-                    st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche?motsCles={domaine_choisi}&departement={code_departement})")
+        st.components.v1.html(widget_code, height=850)
 
 # --- Onglet 6 : À propos ---
 with onglet6:
