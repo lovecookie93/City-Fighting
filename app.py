@@ -531,33 +531,37 @@ with onglet5:
                 st.error(f"Impossible de trouver le code département pour {ville} 🚨")
                 continue
 
-            # Appel API France Travail
-            try:
-                api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={code_departement}&motsCles={domaine_choisi}&range=0-20"
-                headers = {
-                    "Authorization": f"Bearer {token}"
-                }
-                r = requests.get(api_url, headers=headers)
+            # Message de chargement pendant l'API
+            with st.spinner(f"Recherche des offres pour {ville}... ⏳"):
+                try:
+                    api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={code_departement}&motsCles={domaine_choisi}&range=0-20"
+                    headers = {
+                        "Authorization": f"Bearer {token}"
+                    }
+                    r = requests.get(api_url, headers=headers)
 
-                if r.status_code == 200:
-                    offres = r.json().get("resultats", [])
-                    if offres:
-                        for offre in offres:
-                            intitule = offre.get('intitule', 'Titre non disponible')
-                            lieu = offre.get('lieuTravail', {}).get('libelle', 'Lieu non précisé')
-                            entreprise = offre.get('entreprise', {}).get('nom', 'Entreprise non précisée')
-                            url = offre['origineOffre'].get('urlOrigine', '#')
+                    if r.status_code == 200:
+                        offres = r.json().get("resultats", [])
+                        if offres:
+                            for offre in offres:
+                                intitule = offre.get('intitule', 'Titre non disponible')
+                                lieu = offre.get('lieuTravail', {}).get('libelle', 'Lieu non précisé')
+                                entreprise = offre.get('entreprise', {}).get('nom', 'Entreprise non précisée')
+                                url = offre['origineOffre'].get('urlOrigine', '#')
 
-                            st.success(f"**{intitule}** \n\n📍 {lieu} | 🏢 {entreprise} \n\n 👉 [Voir l'offre ➔]({url})")
-                            st.markdown("---")
+                                st.success(f"**{intitule}**\n\n📍 {lieu} | 🏢 {entreprise}\n\n👉 [Voir l'offre ➔]({url})")
+                                st.markdown("---")
+                        else:
+                            st.warning(f"❌ Aucune offre trouvée pour **{ville}** dans le domaine **'{domaine_choisi}'**.")
+                            st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche?motsCles={domaine_choisi}&departement={code_departement})")
+
                     else:
-                        st.warning(f"❌ Aucune offre trouvée pour **{ville}** dans le domaine **'{domaine_choisi}'**.")
+                        st.warning(f"⚡ L'API n'a pas répondu correctement ({r.status_code}) pour {ville}.")
                         st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche?motsCles={domaine_choisi}&departement={code_departement})")
-                else:
-                    st.error(f"Erreur {r.status_code} pour la recherche sur {ville} 🚨")
 
-            except Exception as e:
-                st.error(f"Erreur lors de la récupération des offres pour {ville} 🚨")
+                except Exception as e:
+                    st.warning(f"⚡ Erreur inattendue pour {ville}.")
+                    st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche?motsCles={domaine_choisi}&departement={code_departement})")
 
 # --- Onglet 6 : À propos ---
 with onglet6:
