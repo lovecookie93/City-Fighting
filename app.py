@@ -506,64 +506,64 @@ with onglet4:
     </small>
     """, unsafe_allow_html=True)
 
-# --- Onglet Offres d'emploi --- 
+# --- Onglet Offres d'emploi ---
 with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
-    st.markdown("Choisissez un domaine pour chercher des offres par ville.")
-    domaine = st.selectbox("🏢 Domaine :", ["Informatique", "Commerce", "BTP", "Finance", "Santé", "Enseignement", "Agroalimentaire", "Tourisme"])
+    st.markdown("Choisissez un domaine pour chercher des offres par ville ou région.")
+    domaine = st.selectbox("🏢 Domaine :", ["Informatique", "Santé", "Commerce", "Tourisme", "Finance", "Enseignement", "Agro", "BTP"])
 
-    domaine_vers_codes_rome = {
-        "Informatique": ["M1802", "M1803", "M1805"],
-        "Commerce": ["D1407", "D1505"],
-        "BTP": ["F1106", "F1107"],
-        "Finance": ["C1202", "C1206"],
-        "Santé": ["J1501", "J1502"],
-        "Enseignement": ["K2106", "K2109"],
-        "Agroalimentaire": ["A1406", "A1407"],
-        "Tourisme": ["G1101", "G1102"]
+    domaines_keywords = {
+        "Informatique": "informatique",
+        "Santé": "santé",
+        "Commerce": "commerce",
+        "Tourisme": "tourisme",
+        "Finance": "finance",
+        "Enseignement": "enseignement",
+        "Agro": "agroalimentaire",
+        "BTP": "BTP"
     }
-
-    codes_rome = domaine_vers_codes_rome.get(domaine, [])
+    mot_cle = domaines_keywords.get(domaine, domaine)
 
     col1, col2 = st.columns(2)
+
     for col, ville in zip([col1, col2], [ville1, ville2]):
-        data_ville = villes_df[villes_df["label"] == ville]
+        data_ville = villes_df[villes_df["label"] == ville].iloc[0]
+        departement_code = data_ville["departement_code"]
+        region_nom = data_ville["region_nom"]
 
         with col:
             st.markdown(f"### 📍 {ville}")
 
-            if data_ville.empty:
-                st.error(f"Impossible de trouver les informations pour {ville}.")
-                continue
+            headers = {
+                "Authorization": f"Bearer {token}"
+            }
+            url_dep = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={departement_code}&motsCles={mot_cle}&range=0-4"
 
-            departement_code = data_ville.iloc[0]["departement_code"]
-            found_offers = False
+            response_dep = requests.get(url_dep, headers=headers)
 
-            for rome_code in codes_rome:
-                api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={departement_code}&rome={rome_code}&range=0-5"
-                headers = {
-                    "Authorization": f"Bearer {token}"
-                }
-                try:
-                    r = requests.get(api_url, headers=headers)
-                    if r.status_code == 200:
-                        offres = r.json().get("resultats", [])
-                        if offres:
-                            found_offers = True
-                            for offre in offres:
-                                st.markdown(f"🔹 **{offre['intitule']}**")
-                                st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
-                                st.markdown("---")
-                    else:
-                        # on continue sans casser si une recherche ROME échoue
-                        continue
-                except Exception as e:
-                    continue
+            offres = []
+            if response_dep.status_code == 200:
+                offres = response_dep.json().get("resultats", [])
+            else:
+                # Si échec département, tester par région
+                url_region = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?region={data_ville['region_nom']}&motsCles={mot_cle}&range=0-4"
+                response_region = requests.get(url_region, headers=headers)
+                if response_region.status_code == 200:
+                    offres = response_region.json().get("resultats", [])
 
-            if not found_offers:
-                st.warning(f"Aucune offre trouvée pour {ville} dans le domaine '{domaine}'.")
-
+            if offres:
+                for offre in offres:
+                    st.markdown(f"""
+                    <div style='background-color: #f9f9f9; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd;'>
+                        <h5 style='margin-bottom:5px;'>{offre['intitule']}</h5>
+                        <p style='margin-bottom:8px; font-size:13px; color:#666;'>📍 {offre['lieuTravail']['libelle'] if 'lieuTravail' in offre else 'Lieu non précisé'}</p>
+                        <a href='{offre['origineOffre']['urlOrigine']}' target='_blank' style='color: #007BFF; font-weight:bold;'>🔗 Voir l'offre</a>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.warning(f"Aucune offre trouvée pour **{ville}** dans le domaine **'{domaine}'**.")
+                st.markdown(f"[👉 Voir d'autres offres sur France Travail](https://candidat.francetravail.fr/offres/recherche?motsCles={mot_cle})")
 
 # --- Onglet 6 : À propos ---
 with onglet6:
