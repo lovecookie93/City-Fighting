@@ -535,35 +535,40 @@ with onglet5:
         with col:
             st.markdown(f"### 📍 {ville}")
 
-            headers = {
-                "Authorization": f"Bearer {token}"
-            }
-            url_dep = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={departement_code}&motsCles={mot_cle}&range=0-4"
+            with st.spinner(f"🔎 Recherche d'offres pour {ville} dans le domaine '{domaine}'..."):
+                headers = {
+                    "Authorization": f"Bearer {token}"
+                }
 
-            response_dep = requests.get(url_dep, headers=headers)
+                # 1️⃣ Essayer sur le département
+                url_dep = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={departement_code}&motsCles={mot_cle}&range=0-4"
+                response_dep = requests.get(url_dep, headers=headers)
 
-            offres = []
-            if response_dep.status_code == 200:
-                offres = response_dep.json().get("resultats", [])
-            else:
-                # Si échec département, tester par région
-                url_region = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?region={data_ville['region_nom']}&motsCles={mot_cle}&range=0-4"
-                response_region = requests.get(url_region, headers=headers)
-                if response_region.status_code == 200:
-                    offres = response_region.json().get("resultats", [])
+                offres = []
+                if response_dep.status_code == 200:
+                    offres = response_dep.json().get("resultats", [])
 
-            if offres:
-                for offre in offres:
-                    st.markdown(f"""
-                    <div style='background-color: #f9f9f9; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd;'>
-                        <h5 style='margin-bottom:5px;'>{offre['intitule']}</h5>
-                        <p style='margin-bottom:8px; font-size:13px; color:#666;'>📍 {offre['lieuTravail']['libelle'] if 'lieuTravail' in offre else 'Lieu non précisé'}</p>
-                        <a href='{offre['origineOffre']['urlOrigine']}' target='_blank' style='color: #007BFF; font-weight:bold;'>🔗 Voir l'offre</a>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.warning(f"Aucune offre trouvée pour **{ville}** dans le domaine **'{domaine}'**.")
-                st.markdown(f"[👉 Voir d'autres offres sur France Travail](https://candidat.francetravail.fr/offres/recherche?motsCles={mot_cle})")
+                # 2️⃣ Si rien trouvé → essayer sur la région
+                if not offres:
+                    url_region = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?region={region_nom}&motsCles={mot_cle}&range=0-4"
+                    response_region = requests.get(url_region, headers=headers)
+                    if response_region.status_code == 200:
+                        offres = response_region.json().get("resultats", [])
+
+                # 3️⃣ Affichage final
+                if offres:
+                    for offre in offres:
+                        st.markdown(f"""
+                        <div style='background-color: #f9f9f9; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd;'>
+                            <h5 style='margin-bottom:5px;'>{offre['intitule']}</h5>
+                            <p style='margin-bottom:8px; font-size:13px; color:#666;'>📍 {offre['lieuTravail']['libelle'] if 'lieuTravail' in offre else 'Lieu non précisé'}</p>
+                            <a href='{offre['origineOffre']['urlOrigine']}' target='_blank' style='color: #007BFF; font-weight:bold;'>🔗 Voir l'offre</a>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.warning(f"❌ Aucune offre trouvée pour **{ville}** dans le domaine **'{domaine}'**.")
+                    st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche?motsCles={mot_cle})")
+
 
 # --- Onglet 6 : À propos ---
 with onglet6:
