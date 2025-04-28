@@ -506,9 +506,11 @@ with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
     st.markdown("Entrez un mot-clé pour filtrer les offres disponibles par ville.")
-    keyword = st.text_input("🔎 Mot-clé (ex: Data, Développeur, Marketing...)", "")
+    keyword = st.text_input("🔎 Mot-clé (ex: Data, Développeur, Marketing...)")
 
-    if st.button("🔎 Rechercher"):
+    lancer_recherche = st.button("🔄 Rechercher")
+
+    if lancer_recherche:
         col1, col2 = st.columns(2)
 
         for col, ville in zip([col1, col2], [ville1, ville2]):
@@ -522,34 +524,34 @@ with onglet5:
                     continue
 
                 try:
-                    # Choisir la bonne URL
-                    if data_ville.iloc[0]['departement_code'] == '75':
-                        # Paris ➔ rechercher sur toute l'Île-de-France (région 11)
-                        api_url = "https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?region=11&range=0-20"
-                    else:
-                        # Autres villes normales
-                        api_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={data_ville.iloc[0]['departement_code']}&range=0-20"
-
-                    # Ajouter mots-clés si renseigné
+                    base_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={data_ville.iloc[0]['departement_code']}&range=0-30"
                     if keyword:
-                        api_url += f"&motsCles={keyword}"
+                        base_url += f"&motsCles={keyword}"
 
                     headers = {
                         "Authorization": f"Bearer {token}"
                     }
-                    r = requests.get(api_url, headers=headers)
+                    r = requests.get(base_url, headers=headers)
 
                     if r.status_code == 200:
                         offres = r.json().get("resultats", [])
+
+                        # ➡️ Important : filtre par ville réelle dans le libellé de l'offre
+                        offres = [
+                            offre for offre in offres
+                            if ville.lower() in offre.get('lieuTravail', {}).get('libelle', '').lower()
+                        ]
+
                         if offres:
-                            for offre in offres:
-                                st.markdown(f"🔹 **{offre.get('intitule', 'Titre inconnu')}**")
-                                st.markdown(f"- 📍 {offre['lieuTravail'].get('libelle', 'Lieu inconnu')}")
-                                if 'origineOffre' in offre and 'urlOrigine' in offre['origineOffre']:
-                                    st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
+                            for offre in offres[:10]:  # Limite d'affichage à 10 offres
+                                st.markdown(f"🔹 **{offre['intitule']}**")
+                                st.markdown(f"📍 {offre['lieuTravail']['libelle']}")
+                                st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
                                 st.markdown("---")
                         else:
-                            st.warning(f"Aucune offre trouvée pour {ville}" + (f" avec '{keyword}'." if keyword else "."))
+                            st.warning(f"Aucune offre trouvée pour {ville}" + (f" avec le mot-clé '{keyword}'." if keyword else "."))
+                            st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
+
                     else:
                         st.error(f"Erreur {r.status_code} lors de la récupération des offres pour {ville} 🚨")
 
