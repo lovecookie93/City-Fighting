@@ -536,10 +536,7 @@ with onglet5:
                             "Authorization": f"Bearer {token}"
                         }
                         r = requests.get(url, headers=headers)
-
-                        # Lien personnalisé France Travail en backup
-                        france_travail_url = f"https://candidat.francetravail.fr/offres/recherche?lieux={insee_code}&motsCles={keyword}&offresPartenaires=true&rayon=10&tri=0"
-
+                        
                         if r.status_code == 200:
                             offres = r.json().get("resultats", [])
                             if offres:
@@ -550,14 +547,14 @@ with onglet5:
                                     st.markdown("---")
                             else:
                                 st.warning(f"Aucune offre trouvée pour {ville} avec '{keyword}'.")
-                                st.markdown(f"👉 [Voir toutes les offres sur France Travail ➔]({france_travail_url})")
+                                st.markdown(f"👉 [Voir toutes les offres sur France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
                         else:
                             st.error(f"Erreur {r.status_code} lors de la récupération des offres pour {ville} 🚨")
-                            st.markdown(f"👉 [Voir toutes les offres sur France Travail ➔]({france_travail_url})")
+                            st.markdown(f"👉 [Voir toutes les offres sur France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
 
                     except Exception as e:
                         st.error(f"Erreur lors de la récupération des offres pour {ville} 🚨")
-                        st.markdown(f"👉 [Voir toutes les offres sur France Travail ➔]({france_travail_url})")
+                        st.markdown(f"👉 [Voir toutes les offres sur France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
 
 # --- Onglet 6 : À propos ---
 with onglet6:
