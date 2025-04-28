@@ -501,49 +501,59 @@ with onglet4:
     </small>
     """, unsafe_allow_html=True)
 
-# --- Onglet 5 : Offres d'emploi ---
+# --- Onglet Offres d'emploi ---
 with onglet5:
     st.markdown("## 💼 Offres d'emploi disponibles")
 
-    search_keyword = st.text_input("🔎 Filtrer par mot-clé (optionnel)", "")
+    st.markdown("Entrez un mot-clé pour filtrer les offres disponibles par ville.")
+    keyword = st.text_input("🔎 Mot-clé (ex: Data, Développeur, Marketing...)")
 
-    col1, col2 = st.columns(2)
+    lancer_recherche = st.button("🔄 Rechercher")
 
-    for col, ville in zip([col1, col2], [ville1, ville2]):
-        ville_data = villes_df[villes_df["label"] == ville].iloc[0]
-        departement = ville_data["departement_code"]
+    if lancer_recherche:
+        col1, col2 = st.columns(2)
 
-        with col:
-            st.subheader(f"📍 {ville}")
+        for col, ville in zip([col1, col2], [ville1, ville2]):
+            data_ville = villes_df[villes_df["label"] == ville]
 
-            params = {
-                "departement": departement,
-                "range": "0-19"
-            }
-            if search_keyword.strip():
-                params["motsCles"] = search_keyword.strip()
+            with col:
+                st.markdown(f"### 📍 {ville}")
 
-            headers = {
-                "Authorization": f"Bearer {token}"
-            }
-            url = "https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search"
+                if data_ville.empty:
+                    st.error(f"Impossible de trouver les informations pour {ville}.")
+                    continue
 
-            response = requests.get(url, headers=headers, params=params)
+                try:
+                    base_url = f"https://api.pole-emploi.io/partenaire/offresdemploi/v2/offres/search?departement={data_ville.iloc[0]['departement_code']}&range=0-30"
+                    if keyword:
+                        base_url += f"&motsCles={keyword}"
 
-            if response.status_code == 200:
-                offres = response.json().get("resultats", [])
-                if offres:
-                    for offre in offres:
-                        st.markdown(f"**🔹 {offre['intitule']}**")
-                        st.caption(f"📃 {offre.get('typeContrat', 'Type de contrat inconnu')}")
-                        lieu = offre.get('lieuTravail', {}).get('libelle', 'Lieu inconnu')
-                        st.caption(f"📍 {lieu}")
-                        st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
-                        st.markdown("---")
-                else:
-                    st.warning(f"Aucune offre trouvée pour {ville}" + (f" avec le mot-clé '{search_keyword}'." if search_keyword else "."))
-            else:
-                st.error(f"Erreur {response.status_code} lors de la récupération des offres pour {ville} 🚨")
+                    headers = {
+                        "Authorization": f"Bearer {token}"
+                    }
+                    r = requests.get(base_url, headers=headers)
+
+                    if r.status_code == 200:
+                        offres = r.json().get("resultats", [])
+
+                        # ➡️ Filtrer pour garder seulement les offres dans la ville précise
+                        offres = [offre for offre in offres if ville.lower() in offre.get('lieuTravail', {}).get('libelle', '').lower()]
+
+                        if offres:
+                            for offre in offres:
+                                st.markdown(f"🔹 **{offre['intitule']}**")
+                                st.markdown(f"📍 {offre['lieuTravail']['libelle']}")
+                                st.markdown(f"[Voir l'offre ➔]({offre['origineOffre']['urlOrigine']})")
+                                st.markdown("---")
+                        else:
+                            st.warning(f"Aucune offre trouvée pour {ville}" + (f" avec le mot-clé '{keyword}'." if keyword else "."))
+                            st.markdown(f"👉 [Voir d'autres offres France Travail ➔](https://candidat.francetravail.fr/offres/recherche)")
+
+                    else:
+                        st.error(f"Erreur {r.status_code} lors de la récupération des offres pour {ville} 🚨")
+
+                except Exception as e:
+                    st.error(f"Erreur lors de la récupération des offres pour {ville} 🚨")
 
 # --- Onglet 6 : À propos ---
 with onglet6:
